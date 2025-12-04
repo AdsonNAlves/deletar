@@ -1,0 +1,57 @@
+# 'gpu' (A100) ou 'cpu' (Notebook Intel)
+ARG BUILD_TARGET=cpu
+
+# Usa a imagem NGC otimizada para GPU, contendo PyTorch CUDA 12.x e ambiente DEVEL
+FROM nvcr.io/nvidia/pytorch:24.05-py3 AS builder_gpu
+
+# Usa uma imagem PyTorch com suporte a CPU e Ubuntu 20.04
+FROM pytorch/pytorch:2.4.1-cpu-ubuntu20.04 AS builder_cpu
+
+# A imagem base é definida pelo argumento BUILD_TARGET.
+FROM builder_${BUILD_TARGET} AS final_builder
+
+LABEL mantainer="a220655@dac.unicamp.br" \
+      version="0.0.1"
+
+# Configurações iniciais
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=America/Sao_Paulo
+
+# 1) Instalação das dependências do sistema
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget \
+    git \
+    xz-utils \
+    # Dependências do CoppeliaSim (Headless) e Matplotlib/OpenCV
+    libglu1-mesa \
+    libxrender1 \
+    libsm6 \
+    libxrandr2 \
+    libxi6 \
+    libxkbcommon0 \
+    libx11-xcb1 \
+    libglib2.0-0 \
+    libxcb-cursor0 libxcb-xinerama0 libxcb-randr0 \ 
+    && rm -rf /var/lib/apt/lists/*
+
+# 2) Instalação do CoppeliaSim
+WORKDIR /opt
+RUN wget https://downloads.coppeliarobotics.com/V4_9_0_rev6/CoppeliaSim_Edu_V4_9_0_rev6_Ubuntu20_04.tar.xz && \
+    tar -xf CoppeliaSim_Edu_V4_9_0_rev6_Ubuntu20_04.tar.xz && \
+    rm CoppeliaSim_Edu_V4_9_0_rev6_Ubuntu20_04.tar.xz && \
+    mv CoppeliaSim_Edu_V4_9_0_rev6_Ubuntu20_04 coppeliasim
+
+ENV COPPELIASIM_ROOT=/opt/coppeliasim
+ENV PATH="${COPPELIASIM_ROOT}:${PATH}"
+
+# 3) Instalação das dependências Python restantes
+WORKDIR /app
+COPY requirements_minimal_final.txt /app/requirements.txt
+# O PyTorch (CPU ou GPU) já está instalado, apenas instalamos o restante
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Adiciona a instalação editável para facilitar a edição do código
+COPY train_agent.py drone_env.py /app/
+RUN pip install -e .
+
+CMD ["bash"]

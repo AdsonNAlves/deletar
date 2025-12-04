@@ -9,7 +9,7 @@ if __name__ == "__main__":
 
     # Configurações de execução
     SCENE_PATH = "/home/adson/Desktop/unicamp/new_swarm/multiagent/scenario/swarm/scenario_empty_swarm.ttt"
-    HEADLESS_MODE = True  # Mude para True para treinar em background (sem abrir janela)
+    HEADLESS_MODE = False  # Mude para True para treinar em background (sem abrir janela)
 
     # Cria ambiente 
     env = DroneEnv(
